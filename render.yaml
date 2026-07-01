@@ -1,0 +1,137 @@
+# ==============================================================
+# OPTIM AI BRE Engine — Render Blueprint
+# Deploy everything with one click via Render Dashboard → New → Blueprint
+#
+# After deployment:
+#   API:     https://optim-ai-bre-api.onrender.com
+#   UI:      https://optim-ai-bre-ui.onrender.com
+#   Swagger: https://optim-ai-bre-api.onrender.com/swagger
+#
+# Default login:
+#   admin@optimai.in  /  Admin@1234
+#   demo@demobank.in  /  Demo@1234
+# ==============================================================
+
+databases:
+  # ----------------------------------------------------------
+  # PostgreSQL 15 — Managed by Render
+  # Render automatically provides DATABASE_URL to services
+  # ----------------------------------------------------------
+  - name: optim-ai-bre-db
+    databaseName: optimai_bre
+    user: optimai
+    plan: starter         # free tier — upgrade to standard for production
+    postgresMajorVersion: "15"
+
+services:
+  # ----------------------------------------------------------
+  # Redis — Managed by Render
+  # Render automatically provides REDIS_URL to services
+  # ----------------------------------------------------------
+  - type: redis
+    name: optim-ai-bre-redis
+    plan: starter         # free tier — upgrade to standard for production
+    maxmemoryPolicy: allkeys-lru
+    ipAllowList: []       # empty = internal access only (most secure)
+
+  # ----------------------------------------------------------
+  # BACKEND — .NET 8 API (Docker)
+  # Serves:  https://optim-ai-bre-api.onrender.com
+  # ----------------------------------------------------------
+  - type: web
+    name: optim-ai-bre-api
+    runtime: docker
+    dockerfilePath: ./docker/Dockerfile.backend
+    dockerContext: ./src/backend
+    plan: starter         # upgrade to standard for production (512MB RAM may be tight for .NET)
+    healthCheckPath: /health
+    numInstances: 1
+    autoDeploy: true
+    envVars:
+      # --- .NET Runtime ---
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: ASPNETCORE_URLS
+        value: http://+:8080
+
+      # --- PostgreSQL (auto-injected by Render from the database above) ---
+      - key: DATABASE_URL
+        fromDatabase:
+          name: optim-ai-bre-db
+          property: connectionString
+
+      # --- Redis (auto-injected by Render from the Redis service above) ---
+      - key: REDIS_URL
+        fromService:
+          name: optim-ai-bre-redis
+          type: redis
+          property: connectionString
+
+      # --- JWT --- generate a strong random secret for each deployment ---
+      - key: Jwt__SecretKey
+        generateValue: true
+      - key: Jwt__Issuer
+        value: OptimAI.BRE
+      - key: Jwt__Audience
+        value: OptimAI.BRE.Clients
+      - key: Jwt__AccessTokenExpiryMinutes
+        value: "480"
+      - key: Jwt__RefreshTokenExpiryDays
+        value: "30"
+
+      # --- CORS — allow the frontend Render URL ---
+      - key: AllowedOrigins__0
+        value: https://optim-ai-bre-ui.onrender.com
+      - key: AllowedOrigins__1
+        value: http://optim-ai-bre-ui.onrender.com
+
+      # --- AI Service (disabled by default — set keys to enable) ---
+      - key: AiOptions__UseAzureOpenAI
+        value: "false"
+      - key: AiOptions__ApiKey
+        value: ""           # set to your OpenAI key to enable AI features
+      - key: AiOptions__Endpoint
+        value: ""           # set to Azure OpenAI endpoint if using Azure
+      - key: AiOptions__ModelName
+        value: gpt-4o
+
+      # --- Rule Engine ---
+      - key: RuleEngine__MaxConcurrentExecutions
+        value: "50"
+      - key: RuleEngine__DefaultTimeoutMs
+        value: "5000"
+      - key: RuleEngine__EnableAiByDefault
+        value: "false"
+      - key: RuleEngine__CacheRulesTtlMinutes
+        value: "5"
+
+      # --- Logging ---
+      - key: Serilog__MinimumLevel__Default
+        value: Information
+
+  # ----------------------------------------------------------
+  # FRONTEND — Next.js 14 (Docker)
+  # Serves:  https://optim-ai-bre-ui.onrender.com
+  #
+  # NEXT_PUBLIC_API_URL is baked at build time via dockerBuildArgs.
+  # It points directly to the backend service URL.
+  # ----------------------------------------------------------
+  - type: web
+    name: optim-ai-bre-ui
+    runtime: docker
+    dockerfilePath: ./docker/Dockerfile.frontend
+    dockerContext: ./src/frontend/optim-ai-bre-ui
+    plan: starter
+    healthCheckPath: /api/health
+    numInstances: 1
+    autoDeploy: true
+    dockerBuildArgs:
+      - key: NEXT_PUBLIC_API_URL
+        value: https://optim-ai-bre-api.onrender.com/api/v1
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_TELEMETRY_DISABLED
+        value: "1"
+      - key: PORT
+        value: "3000"

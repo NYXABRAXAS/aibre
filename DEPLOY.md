@@ -1,352 +1,247 @@
 # OPTIM AI BRE Engine — Deployment Guide
 
-Deploy to any server in 4 steps. No Node.js, .NET, PostgreSQL, or Redis installation required.
-Everything runs inside Docker containers.
+---
+
+## RENDER DEPLOYMENT (Recommended — Easiest)
+
+Deploy the complete platform to Render in 4 steps.
+No server setup. No Docker installation. No manual configuration.
 
 ---
 
-## STEP 1 — Install Docker
+### STEP 1 — Push to GitHub
 
-### Windows Server / Windows 11
-```
-Download: https://www.docker.com/products/docker-desktop/
-Run the installer → Restart when prompted → Docker Desktop starts automatically
-```
-
-Verify:
-```powershell
-docker --version
-docker compose version
-```
-
-### Ubuntu / Debian Linux
 ```bash
-curl -fsSL https://get.docker.com | sh
-sudo usermod -aG docker $USER
-newgrp docker
-```
-
-Verify:
-```bash
-docker --version
-docker compose version
-```
-
-### Amazon Linux 2 (AWS EC2)
-```bash
-sudo yum update -y
-sudo amazon-linux-extras install docker -y
-sudo service docker start
-sudo usermod -aG docker ec2-user
-sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-sudo chmod +x /usr/local/bin/docker-compose
-```
-
-### Azure VM (Ubuntu)
-Same as Ubuntu above.
-
-### DigitalOcean / Render / Any VPS (Ubuntu)
-Same as Ubuntu above.
-
----
-
-## STEP 2 — Copy Project Files
-
-### Option A — Copy from your machine to the server
-```bash
-# From your local machine (replace SERVER_IP):
-scp -r optim-ai-bre/ user@SERVER_IP:~/optim-ai-bre/
-
-# On the server:
-cd ~/optim-ai-bre
-```
-
-### Option B — Clone from Git
-```bash
-git clone https://your-repo-url/optim-ai-bre.git
 cd optim-ai-bre
-```
 
-### Option C — Copy files directly (Windows to Server)
-Use WinSCP, FileZilla, or any SFTP client to copy the `optim-ai-bre` folder to the server.
+git init
+git add .
+git commit -m "Render Ready"
+git branch -M main
+git remote add origin https://github.com/YOUR_USERNAME/YOUR_REPO.git
+git push -u origin main
+```
 
 ---
 
-### Configure Environment Variables
+### STEP 2 — Create a Render Blueprint
+
+1. Go to **https://dashboard.render.com**
+2. Click **New** → **Blueprint**
+3. Connect your GitHub repository
+4. Render reads `render.yaml` and shows you the services to create:
+   - `optim-ai-bre-api` — .NET 8 backend
+   - `optim-ai-bre-ui` — Next.js frontend
+   - `optim-ai-bre-db`  — PostgreSQL 15
+   - `optim-ai-bre-redis` — Redis
+
+5. Click **Apply**
+
+---
+
+### STEP 3 — Deploy
+
+Render builds and deploys all services automatically.
+
+**Build time:** ~5–8 minutes (first build compiles .NET + Next.js from source)
+
+Watch progress in the Render dashboard under each service's **Logs** tab.
+
+---
+
+### STEP 4 — Open the Application
+
+| What | URL |
+|------|-----|
+| Application | `https://optim-ai-bre-ui.onrender.com` |
+| API Swagger | `https://optim-ai-bre-api.onrender.com/swagger` |
+| Health Check | `https://optim-ai-bre-api.onrender.com/health` |
+
+**Default login credentials:**
+```
+Admin:  admin@optimai.in  /  Admin@1234
+Demo:   demo@demobank.in  /  Demo@1234
+```
+
+---
+
+## WHAT RENDER CONFIGURES AUTOMATICALLY
+
+When you deploy via render.yaml, Render automatically:
+
+| Variable | Value |
+|----------|-------|
+| `DATABASE_URL` | PostgreSQL connection URL (injected from managed DB) |
+| `REDIS_URL` | Redis connection URL (injected from managed Redis) |
+| `Jwt__SecretKey` | Strong random 32+ character string (auto-generated) |
+| `NEXT_PUBLIC_API_URL` | `https://optim-ai-bre-api.onrender.com/api/v1` (baked at build) |
+| CORS origins | Frontend URL automatically added to allowed origins |
+
+**You don't need to set any environment variables manually.**
+
+---
+
+## ENABLE AI FEATURES (Optional)
+
+AI features are disabled by default (app works fully without them).
+
+To enable AI credit analysis and rule generation:
+
+1. Go to Render Dashboard → `optim-ai-bre-api` → **Environment**
+2. Set these variables:
+
+**Option A — OpenAI:**
+```
+AiOptions__UseAzureOpenAI = false
+AiOptions__ApiKey         = sk-your-openai-key-here
+```
+
+**Option B — Azure OpenAI:**
+```
+AiOptions__UseAzureOpenAI = true
+AiOptions__Endpoint       = https://YOUR-RESOURCE.openai.azure.com/
+AiOptions__ApiKey         = your-azure-openai-key
+```
+
+3. Click **Save Changes** → service redeploys automatically
+
+---
+
+## SCALE UP (For Production)
+
+Render Starter plan (free):
+- 512 MB RAM, 0.1 CPU
+- Spins down after 15 min of inactivity (cold start = 30–60 sec)
+
+For production, upgrade in Render Dashboard → service → **Settings** → **Plan**:
+
+| Service | Recommended Plan | RAM | CPU |
+|---------|-----------------|-----|-----|
+| `optim-ai-bre-api` | Standard ($25/mo) | 2GB | 1 CPU |
+| `optim-ai-bre-ui` | Starter ($7/mo) | 512MB | 0.5 CPU |
+| `optim-ai-bre-db` | Standard ($22/mo) | 1GB | — |
+| `optim-ai-bre-redis` | Standard ($10/mo) | 1GB | — |
+
+---
+
+## CUSTOM DOMAIN
+
+1. Render Dashboard → `optim-ai-bre-ui` → **Settings** → **Custom Domains**
+2. Add your domain (e.g., `bre.yourcompany.com`)
+3. Add a CNAME record at your DNS provider pointing to the Render URL
+4. Render provisions a free SSL certificate automatically
+
+After adding the custom domain, update CORS:
+1. Render Dashboard → `optim-ai-bre-api` → **Environment**
+2. Add: `AllowedOrigins__2 = https://bre.yourcompany.com`
+3. Save → redeploys automatically
+
+---
+
+## GIT WORKFLOW (Continuous Deployment)
+
+After initial deploy, any push to `main` triggers automatic redeployment:
 
 ```bash
-# Copy the example env file:
+# Make changes to your code
+git add .
+git commit -m "Update rule engine logic"
+git push origin main
+# Render automatically rebuilds and deploys
+```
+
+---
+
+## VIEW LOGS
+
+```
+Backend logs:  Render Dashboard → optim-ai-bre-api  → Logs
+Frontend logs: Render Dashboard → optim-ai-bre-ui   → Logs
+DB logs:       Render Dashboard → optim-ai-bre-db   → Logs
+```
+
+---
+
+## SELF-HOSTED DOCKER DEPLOYMENT
+
+If you prefer to host on your own server (AWS, Azure, DigitalOcean, etc.):
+
+### STEP 1 — Install Docker
+```bash
+# Ubuntu/Debian
+curl -fsSL https://get.docker.com | sh
+sudo usermod -aG docker $USER && newgrp docker
+
+# Verify
+docker --version && docker compose version
+```
+
+### STEP 2 — Configure Environment
+```bash
 cp docker/.env.example docker/.env
+nano docker/.env   # Change all CHANGE_ME values
 ```
 
-Edit `docker/.env` — change all `CHANGE_ME` values:
-```bash
-nano docker/.env
-```
-
-**Required changes:**
+Minimum required changes in `docker/.env`:
 ```env
-POSTGRES_PASSWORD=YourStrongDatabasePassword123!
-REDIS_PASSWORD=YourStrongRedisPassword456!
-JWT_SECRET_KEY=YourRandomStringMinimum32CharsLong789!
+POSTGRES_PASSWORD=YourStrongPassword123!
+REDIS_PASSWORD=YourRedisPassword456!
+JWT_SECRET_KEY=YourRandomStringMinimum32CharactersLong
 APP_DOMAIN=http://YOUR_SERVER_IP
 ```
 
-**To generate a strong JWT secret key:**
-```bash
-# Linux/Mac:
-openssl rand -base64 48
-
-# Windows PowerShell:
--join ((65..90)+(97..122)+(48..57) | Get-Random -Count 64 | % {[char]$_})
-```
-
----
-
-## STEP 3 — Run
+### STEP 3 — Deploy
 
 ```bash
 docker compose up -d
 ```
 
-**That's it.** This command:
-- Builds the .NET 8 backend from source (~3 minutes)
-- Builds the Next.js frontend from source (~2 minutes)
-- Starts PostgreSQL and creates the database schema automatically
-- Starts Redis with authentication
-- Starts Nginx as the reverse proxy
-- Starts the daily database backup service
+This single command:
+- Builds .NET 8 backend from source
+- Builds Next.js frontend from source
+- Starts PostgreSQL + Redis
+- Initializes database schema + seed data automatically
+- Starts Nginx reverse proxy on port 80
 
-**Watch the startup progress:**
-```bash
-docker compose logs -f
-```
-
-**Check all services are running:**
-```bash
-docker compose ps
-```
-
-Expected output:
-```
-NAME             STATUS                   PORTS
-bre-nginx        running (healthy)        0.0.0.0:80->80/tcp
-bre-backend      running (healthy)
-bre-frontend     running (healthy)
-bre-postgres     running (healthy)
-bre-redis        running (healthy)
-bre-db-backup    running
-```
-
----
-
-## STEP 4 — Open the Application
+### STEP 4 — Open
 
 ```
 http://YOUR_SERVER_IP
 ```
 
-| What | URL |
-|------|-----|
-| Application | `http://YOUR_SERVER_IP` |
-| API Documentation (Swagger) | `http://YOUR_SERVER_IP/swagger` |
-| Health Check | `http://YOUR_SERVER_IP/health` |
+---
 
-**Default Login Credentials:**
-```
-Admin Account:
-  Email:    admin@optimai.in
-  Password: Admin@1234
+## ALL URLS AT A GLANCE
 
-Demo Bank Account:
-  Email:    demo@demobank.in
-  Password: Demo@1234
-```
-
-**Change the admin password** after first login from Settings → Profile → Change Password.
+| Deployment | Frontend | API | Swagger |
+|------------|----------|-----|---------|
+| Render | `https://optim-ai-bre-ui.onrender.com` | `https://optim-ai-bre-api.onrender.com` | `/swagger` |
+| Docker local | `http://localhost:3000` | `http://localhost:5000` | `/swagger` |
+| Docker server | `http://SERVER_IP` | `http://SERVER_IP/api` | `/swagger` |
 
 ---
 
-## SSL / HTTPS Setup (Optional)
+## TROUBLESHOOTING
 
-After you have a domain name pointing to your server:
+**Backend shows "Database initialization failed"**
+→ The PostgreSQL service may still be starting. Wait 30 seconds and retry.
+→ Check Render dashboard: `optim-ai-bre-db` must show **Available** status before API starts.
 
-### Option A — Let's Encrypt (Free SSL)
+**Frontend shows blank page**
+→ `NEXT_PUBLIC_API_URL` was baked incorrectly at build time.
+→ In render.yaml, verify `dockerBuildArgs` has the correct backend URL.
+→ Trigger a manual redeploy of `optim-ai-bre-ui`.
 
-```bash
-# Install certbot:
-sudo apt install certbot -y
+**"503 Service Unavailable" on first request**
+→ Free tier Render services sleep after 15 min. The first request wakes them up (takes 30–60 seconds).
+→ Upgrade to paid plan to eliminate cold starts.
 
-# Get certificate (replace with your domain):
-sudo certbot certonly --standalone -d your-domain.com
+**Login returns 401 with correct credentials**
+→ Seed data was not applied. Check backend logs for "Seeding initial data..." message.
+→ If missing, trigger a manual redeploy of `optim-ai-bre-api`.
 
-# Copy certificates to project:
-sudo cp /etc/letsencrypt/live/your-domain.com/fullchain.pem docker/ssl/
-sudo cp /etc/letsencrypt/live/your-domain.com/privkey.pem docker/ssl/
-```
+**CORS error in browser**
+→ Verify `AllowedOrigins__0` in backend env matches the frontend URL exactly (including https://).
 
-Uncomment the HTTPS server block in `docker/nginx.conf`:
-- Replace `your-domain.com` with your actual domain
-- Uncomment the SSL volume mount in `docker-compose.yml`
-- Uncomment `return 301 https://$host$request_uri;` in the HTTP server block
-
-```bash
-# Update APP_DOMAIN in docker/.env:
-APP_DOMAIN=https://your-domain.com
-
-# Restart nginx:
-docker compose restart bre-nginx
-```
-
-### Option B — Cloudflare (Free SSL without cert management)
-Point your domain to Cloudflare, set SSL mode to "Flexible".
-Cloudflare handles HTTPS termination. Your server only needs port 80 open.
-
----
-
-## Useful Commands
-
-```bash
-# View all container status:
-docker compose ps
-
-# View logs for a specific service:
-docker compose logs bre-backend -f --tail=100
-docker compose logs bre-frontend -f --tail=100
-docker compose logs bre-nginx -f --tail=100
-docker compose logs bre-postgres -f --tail=50
-
-# Restart a specific service:
-docker compose restart bre-backend
-docker compose restart bre-nginx
-
-# Restart all services:
-docker compose restart
-
-# Stop all services:
-docker compose stop
-
-# Stop and remove containers (data is preserved in volumes):
-docker compose down
-
-# Stop and remove containers AND all data (complete reset):
-docker compose down -v
-
-# Connect to database:
-docker exec -it bre-postgres psql -U optimai -d optimai_bre
-
-# Connect to Redis:
-docker exec -it bre-redis redis-cli -a YOUR_REDIS_PASSWORD
-
-# Clear Redis cache (forces rules to reload from DB):
-docker exec bre-redis redis-cli -a YOUR_REDIS_PASSWORD FLUSHDB
-```
-
----
-
-## Updating the Application
-
-```bash
-# Pull latest code:
-git pull
-
-# Rebuild and restart:
-docker compose up -d --build
-
-# Or rebuild a specific service:
-docker compose up -d --build bre-backend
-docker compose up -d --build bre-frontend
-```
-
----
-
-## Database Backup & Restore
-
-**Backups are automatic** — the `bre-db-backup` container runs daily at startup and keeps 7 days of backups.
-
-**Backup location (inside container):** `/backups/`
-
-**Access backup files:**
-```bash
-# List backups:
-docker exec bre-db-backup ls -la /backups/
-
-# Copy a backup to the host:
-docker cp bre-db-backup:/backups/bre_backup_20240101_020000.sql.gz ./
-
-# Manual backup now:
-docker exec bre-db-backup sh -c '
-  pg_dump -h bre-postgres -U $POSTGRES_USER -d $POSTGRES_DB | gzip > /backups/manual_$(date +%Y%m%d_%H%M%S).sql.gz
-'
-
-# Restore from backup:
-gunzip < bre_backup_20240101_020000.sql.gz | \
-  docker exec -i bre-postgres psql -U optimai -d optimai_bre
-```
-
----
-
-## Server Requirements
-
-| Component | Minimum | Recommended |
-|-----------|---------|-------------|
-| CPU | 2 cores | 4+ cores |
-| RAM | 4 GB | 8 GB |
-| Disk | 20 GB | 50 GB SSD |
-| OS | Ubuntu 20.04+ / Windows Server 2019+ | Ubuntu 22.04 LTS |
-| Ports | 80, 443 open in firewall | 80, 443 |
-
-**Open firewall ports:**
-```bash
-# Ubuntu UFW:
-sudo ufw allow 80/tcp
-sudo ufw allow 443/tcp
-sudo ufw enable
-
-# AWS EC2: Add inbound rules in Security Group for port 80 and 443
-# Azure VM: Add inbound port rules in Network Security Group
-# DigitalOcean: Add firewall rules in the control panel
-```
-
----
-
-## Troubleshooting
-
-**Container not starting:**
-```bash
-docker compose logs bre-backend --tail=50
-```
-
-**Database connection error:**
-```bash
-# Check postgres is healthy:
-docker compose ps bre-postgres
-
-# Check the POSTGRES_PASSWORD in docker/.env matches what backend expects
-```
-
-**502 Bad Gateway from Nginx:**
-```bash
-# Backend not ready yet — wait 60 seconds after start
-docker compose logs bre-backend --tail=20
-```
-
-**Port 80 already in use:**
-```bash
-# Find what's using port 80:
-sudo lsof -i :80      # Linux
-netstat -ano | findstr :80   # Windows
-
-# Stop it, or change nginx port in docker-compose.yml:
-# ports: - "8080:80"
-# Then access via: http://SERVER_IP:8080
-```
-
-**Out of memory:**
-```bash
-# Check memory usage:
-docker stats
-
-# Add more RAM to the server, or reduce postgres shared_buffers:
-# Edit docker-compose.yml → bre-postgres command → -c shared_buffers=128MB
-```
+**Redis connection failed**
+→ Backend will log a warning but continue running. Rule caching is disabled; rules load from DB each time (slower but functional).
