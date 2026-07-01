@@ -1,0 +1,84 @@
+# ==============================================================
+# OPTIM AI BRE Engine — Backend Dockerfile
+# .NET 8 multi-stage production build
+# ==============================================================
+
+ARG PROJECT=OptimAI.BRE.Gateway
+
+# ---- STAGE 1: RESTORE ----------------------------------------
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS restore
+ARG PROJECT
+WORKDIR /src
+
+COPY ["OptimAI.BRE.Shared/OptimAI.BRE.Shared.csproj",           "OptimAI.BRE.Shared/"]
+COPY ["OptimAI.BRE.RuleEngine/OptimAI.BRE.RuleEngine.csproj",   "OptimAI.BRE.RuleEngine/"]
+COPY ["OptimAI.BRE.RuleDesigner/OptimAI.BRE.RuleDesigner.csproj","OptimAI.BRE.RuleDesigner/"]
+COPY ["OptimAI.BRE.AIEngine/OptimAI.BRE.AIEngine.csproj",       "OptimAI.BRE.AIEngine/"]
+COPY ["OptimAI.BRE.ClientMgmt/OptimAI.BRE.ClientMgmt.csproj",   "OptimAI.BRE.ClientMgmt/"]
+COPY ["OptimAI.BRE.AuditService/OptimAI.BRE.AuditService.csproj","OptimAI.BRE.AuditService/"]
+COPY ["OptimAI.BRE.ReportService/OptimAI.BRE.ReportService.csproj","OptimAI.BRE.ReportService/"]
+COPY ["OptimAI.BRE.IdentityService/OptimAI.BRE.IdentityService.csproj","OptimAI.BRE.IdentityService/"]
+COPY ["OptimAI.BRE.Gateway/OptimAI.BRE.Gateway.csproj",         "OptimAI.BRE.Gateway/"]
+COPY ["OptimAI.BRE.sln", "./"]
+
+RUN dotnet restore "OptimAI.BRE.Gateway/OptimAI.BRE.Gateway.csproj" \
+    --runtime linux-x64
+
+# ---- STAGE 2: BUILD ------------------------------------------
+FROM restore AS build
+ARG PROJECT
+COPY . .
+
+RUN dotnet build "${PROJECT}/${PROJECT}.csproj" \
+    -c Release \
+    --no-restore \
+    --runtime linux-x64 \
+    --self-contained false \
+    -o /app/build
+
+# ---- STAGE 3: PUBLISH ----------------------------------------
+FROM build AS publish
+ARG PROJECT
+
+RUN dotnet publish "${PROJECT}/${PROJECT}.csproj" \
+    -c Release \
+    --no-restore \
+    --runtime linux-x64 \
+    --self-contained false \
+    /p:UseAppHost=false \
+    -o /app/publish
+
+# ---- STAGE 4: RUNTIME ----------------------------------------
+FROM mcr.microsoft.com/dotnet/aspnet:8.0-alpine AS runtime
+
+# Install curl + tz data (for healthcheck and IST timezone)
+RUN apk add --no-cache curl tzdata && \
+    cp /usr/share/zoneinfo/Asia/Kolkata /etc/localtime && \
+    echo "Asia/Kolkata" > /etc/timezone && \
+    apk del tzdata
+
+# Non-root security
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+
+WORKDIR /app
+
+COPY --from=publish --chown=appuser:appgroup /app/publish .
+
+# Persistent log directory
+RUN mkdir -p /app/logs /app/reports && \
+    chown -R appuser:appgroup /app/logs /app/reports
+
+USER appuser
+
+ENV ASPNETCORE_URLS=http://+:8080 \
+    ASPNETCORE_ENVIRONMENT=Production \
+    DOTNET_RUNNING_IN_CONTAINER=true \
+    DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false \
+    TZ=Asia/Kolkata
+
+EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=5 \
+    CMD curl -f http://localhost:8080/health || exit 1
+
+ENTRYPOINT ["dotnet", "OptimAI.BRE.Gateway.dll"]

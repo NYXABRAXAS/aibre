@@ -1,0 +1,12 @@
+C:\Users\Lokesh\Desktop\zerocodebreengine\optim-ai-bre\src\backend\OptimAI.BRE.Shared\bin\Debug\net8.0\OptimAI.BRE.Shared.deps.json
+C:\Users\Lokesh\Desktop\zerocodebreengine\optim-ai-bre\src\backend\OptimAI.BRE.Shared\bin\Debug\net8.0\OptimAI.BRE.Shared.dll
+C:\Users\Lokesh\Desktop\zerocodebreengine\optim-ai-bre\src\backend\OptimAI.BRE.Shared\bin\Debug\net8.0\OptimAI.BRE.Shared.pdb
+C:\Users\Lokesh\Desktop\zerocodebreengine\optim-ai-bre\src\backend\OptimAI.BRE.Shared\obj\Debug\net8.0\OptimAI.BRE.Shared.csproj.AssemblyReference.cache
+C:\Users\Lokesh\Desktop\zerocodebreengine\optim-ai-bre\src\backend\OptimAI.BRE.Shared\obj\Debug\net8.0\OptimAI.BRE.Shared.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Lokesh\Desktop\zerocodebreengine\optim-ai-bre\src\backend\OptimAI.BRE.Shared\obj\Debug\net8.0\OptimAI.BRE.Shared.AssemblyInfoInputs.cache
+C:\Users\Lokesh\Desktop\zerocodebreengine\optim-ai-bre\src\backend\OptimAI.BRE.Shared\obj\Debug\net8.0\OptimAI.BRE.Shared.AssemblyInfo.cs
+C:\Users\Lokesh\Desktop\zerocodebreengine\optim-ai-bre\src\backend\OptimAI.BRE.Shared\obj\Debug\net8.0\OptimAI.BRE.Shared.csproj.CoreCompileInputs.cache
+C:\Users\Lokesh\Desktop\zerocodebreengine\optim-ai-bre\src\backend\OptimAI.BRE.Shared\obj\Debug\net8.0\OptimAI.BRE.Shared.dll
+C:\Users\Lokesh\Desktop\zerocodebreengine\optim-ai-bre\src\backend\OptimAI.BRE.Shared\obj\Debug\net8.0\refint\OptimAI.BRE.Shared.dll
+C:\Users\Lokesh\Desktop\zerocodebreengine\optim-ai-bre\src\backend\OptimAI.BRE.Shared\obj\Debug\net8.0\OptimAI.BRE.Shared.pdb
+C:\Users\Lokesh\Desktop\zerocodebreengine\optim-ai-bre\src\backend\OptimAI.BRE.Shared\obj\Debug\net8.0\ref\OptimAI.BRE.Shared.dll

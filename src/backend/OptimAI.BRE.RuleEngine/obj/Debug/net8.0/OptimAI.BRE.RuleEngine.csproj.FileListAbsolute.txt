@@ -1,0 +1,15 @@
+C:\Users\Lokesh\Desktop\zerocodebreengine\optim-ai-bre\src\backend\OptimAI.BRE.RuleEngine\obj\Debug\net8.0\OptimAI.BRE.RuleEngine.csproj.AssemblyReference.cache
+C:\Users\Lokesh\Desktop\zerocodebreengine\optim-ai-bre\src\backend\OptimAI.BRE.RuleEngine\obj\Debug\net8.0\OptimAI.BRE.RuleEngine.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Lokesh\Desktop\zerocodebreengine\optim-ai-bre\src\backend\OptimAI.BRE.RuleEngine\obj\Debug\net8.0\OptimAI.BRE.RuleEngine.AssemblyInfoInputs.cache
+C:\Users\Lokesh\Desktop\zerocodebreengine\optim-ai-bre\src\backend\OptimAI.BRE.RuleEngine\obj\Debug\net8.0\OptimAI.BRE.RuleEngine.AssemblyInfo.cs
+C:\Users\Lokesh\Desktop\zerocodebreengine\optim-ai-bre\src\backend\OptimAI.BRE.RuleEngine\obj\Debug\net8.0\OptimAI.BRE.RuleEngine.csproj.CoreCompileInputs.cache
+C:\Users\Lokesh\Desktop\zerocodebreengine\optim-ai-bre\src\backend\OptimAI.BRE.RuleEngine\bin\Debug\net8.0\OptimAI.BRE.RuleEngine.deps.json
+C:\Users\Lokesh\Desktop\zerocodebreengine\optim-ai-bre\src\backend\OptimAI.BRE.RuleEngine\bin\Debug\net8.0\OptimAI.BRE.RuleEngine.dll
+C:\Users\Lokesh\Desktop\zerocodebreengine\optim-ai-bre\src\backend\OptimAI.BRE.RuleEngine\bin\Debug\net8.0\OptimAI.BRE.RuleEngine.pdb
+C:\Users\Lokesh\Desktop\zerocodebreengine\optim-ai-bre\src\backend\OptimAI.BRE.RuleEngine\bin\Debug\net8.0\OptimAI.BRE.Shared.dll
+C:\Users\Lokesh\Desktop\zerocodebreengine\optim-ai-bre\src\backend\OptimAI.BRE.RuleEngine\bin\Debug\net8.0\OptimAI.BRE.Shared.pdb
+C:\Users\Lokesh\Desktop\zerocodebreengine\optim-ai-bre\src\backend\OptimAI.BRE.RuleEngine\obj\Debug\net8.0\OptimAI..3299DC9E.Up2Date
+C:\Users\Lokesh\Desktop\zerocodebreengine\optim-ai-bre\src\backend\OptimAI.BRE.RuleEngine\obj\Debug\net8.0\OptimAI.BRE.RuleEngine.dll
+C:\Users\Lokesh\Desktop\zerocodebreengine\optim-ai-bre\src\backend\OptimAI.BRE.RuleEngine\obj\Debug\net8.0\refint\OptimAI.BRE.RuleEngine.dll
+C:\Users\Lokesh\Desktop\zerocodebreengine\optim-ai-bre\src\backend\OptimAI.BRE.RuleEngine\obj\Debug\net8.0\OptimAI.BRE.RuleEngine.pdb
+C:\Users\Lokesh\Desktop\zerocodebreengine\optim-ai-bre\src\backend\OptimAI.BRE.RuleEngine\obj\Debug\net8.0\ref\OptimAI.BRE.RuleEngine.dll

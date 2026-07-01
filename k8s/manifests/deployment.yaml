@@ -1,0 +1,481 @@
+---
+# ============================================================
+# OPTIM AI BRE Engine - Kubernetes Manifests
+# Production-grade deployment with HPA, PodDisruptionBudget
+# ============================================================
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: optimai-bre
+  labels:
+    app.kubernetes.io/name: optimai-bre
+    environment: production
+
+---
+# ============================================================
+# CONFIGMAP
+# ============================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bre-config
+  namespace: optimai-bre
+data:
+  ASPNETCORE_ENVIRONMENT: "Production"
+  ASPNETCORE_URLS: "http://+:8080"
+  AiOptions__UseAzureOpenAI: "true"
+  AiOptions__ModelName: "gpt-4o"
+  Serilog__MinimumLevel__Default: "Information"
+
+---
+# ============================================================
+# SECRETS (use Sealed Secrets or Azure Key Vault in prod)
+# ============================================================
+apiVersion: v1
+kind: Secret
+metadata:
+  name: bre-secrets
+  namespace: optimai-bre
+type: Opaque
+stringData:
+  postgres-connection: "Host=postgres-service;Database=optimai_bre;Username=optimai;Password=CHANGE_ME"
+  redis-connection: "redis-service:6379,password=CHANGE_ME"
+  jwt-secret-key: "CHANGE_ME_TO_STRONG_RANDOM_KEY_MIN_32_CHARS"
+  azure-openai-endpoint: "https://your-resource.openai.azure.com/"
+  azure-openai-key: "CHANGE_ME"
+
+---
+# ============================================================
+# BRE GATEWAY DEPLOYMENT
+# ============================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bre-gateway
+  namespace: optimai-bre
+  labels:
+    app: bre-gateway
+    version: "1.0.0"
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: bre-gateway
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: bre-gateway
+        version: "1.0.0"
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+    spec:
+      terminationGracePeriodSeconds: 30
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: app
+                    operator: In
+                    values:
+                      - bre-gateway
+              topologyKey: kubernetes.io/hostname
+      containers:
+        - name: bre-gateway
+          image: optimai/bre-gateway:1.0.0
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            - name: ConnectionStrings__PostgreSQL
+              valueFrom:
+                secretKeyRef:
+                  name: bre-secrets
+                  key: postgres-connection
+            - name: ConnectionStrings__Redis
+              valueFrom:
+                secretKeyRef:
+                  name: bre-secrets
+                  key: redis-connection
+            - name: Jwt__SecretKey
+              valueFrom:
+                secretKeyRef:
+                  name: bre-secrets
+                  key: jwt-secret-key
+            - name: AiOptions__Endpoint
+              valueFrom:
+                secretKeyRef:
+                  name: bre-secrets
+                  key: azure-openai-endpoint
+            - name: AiOptions__ApiKey
+              valueFrom:
+                secretKeyRef:
+                  name: bre-secrets
+                  key: azure-openai-key
+          envFrom:
+            - configMapRef:
+                name: bre-config
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "1000m"
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            failureThreshold: 3
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 5"]
+          volumeMounts:
+            - name: logs
+              mountPath: /app/logs
+      volumes:
+        - name: logs
+          emptyDir: {}
+
+---
+# ============================================================
+# BRE GATEWAY SERVICE
+# ============================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: bre-gateway-service
+  namespace: optimai-bre
+  labels:
+    app: bre-gateway
+spec:
+  type: ClusterIP
+  selector:
+    app: bre-gateway
+  ports:
+    - port: 80
+      targetPort: 8080
+      name: http
+
+---
+# ============================================================
+# HORIZONTAL POD AUTOSCALER
+# ============================================================
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: bre-gateway-hpa
+  namespace: optimai-bre
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: bre-gateway
+  minReplicas: 3
+  maxReplicas: 20
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+        - type: Pods
+          value: 2
+          periodSeconds: 60
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 120
+
+---
+# ============================================================
+# POD DISRUPTION BUDGET
+# ============================================================
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: bre-gateway-pdb
+  namespace: optimai-bre
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: bre-gateway
+
+---
+# ============================================================
+# FRONTEND DEPLOYMENT
+# ============================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bre-frontend
+  namespace: optimai-bre
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: bre-frontend
+  template:
+    metadata:
+      labels:
+        app: bre-frontend
+    spec:
+      containers:
+        - name: bre-frontend
+          image: optimai/bre-frontend:1.0.0
+          ports:
+            - containerPort: 3000
+          env:
+            - name: NEXT_PUBLIC_API_URL
+              value: "https://api.optimaibre.com/api/v1"
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 10
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bre-frontend-service
+  namespace: optimai-bre
+spec:
+  type: ClusterIP
+  selector:
+    app: bre-frontend
+  ports:
+    - port: 80
+      targetPort: 3000
+
+---
+# ============================================================
+# INGRESS (NGINX / Azure Application Gateway)
+# ============================================================
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: bre-ingress
+  namespace: optimai-bre
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    nginx.ingress.kubernetes.io/rate-limit: "1000"
+    nginx.ingress.kubernetes.io/rate-limit-window: "1m"
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  tls:
+    - hosts:
+        - api.optimaibre.com
+        - app.optimaibre.com
+      secretName: bre-tls-secret
+  rules:
+    - host: api.optimaibre.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: bre-gateway-service
+                port:
+                  number: 80
+    - host: app.optimaibre.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: bre-frontend-service
+                port:
+                  number: 80
+
+---
+# ============================================================
+# POSTGRESQL StatefulSet
+# ============================================================
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  namespace: optimai-bre
+spec:
+  serviceName: postgres-service
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:15-alpine
+          env:
+            - name: POSTGRES_DB
+              value: optimai_bre
+            - name: POSTGRES_USER
+              value: optimai
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: bre-secrets
+                  key: postgres-password
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          ports:
+            - containerPort: 5432
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "500m"
+            limits:
+              memory: "2Gi"
+              cpu: "2000m"
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "optimai", "-d", "optimai_bre"]
+            initialDelaySeconds: 10
+            periodSeconds: 5
+  volumeClaimTemplates:
+    - metadata:
+        name: postgres-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: "managed-premium"
+        resources:
+          requests:
+            storage: 100Gi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-service
+  namespace: optimai-bre
+spec:
+  clusterIP: None
+  selector:
+    app: postgres
+  ports:
+    - port: 5432
+
+---
+# ============================================================
+# REDIS StatefulSet
+# ============================================================
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis
+  namespace: optimai-bre
+spec:
+  serviceName: redis-service
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          command:
+            - redis-server
+            - --requirepass
+            - $(REDIS_PASSWORD)
+            - --maxmemory
+            - 512mb
+            - --maxmemory-policy
+            - allkeys-lru
+          env:
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: bre-secrets
+                  key: redis-password
+          ports:
+            - containerPort: 6379
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          volumeMounts:
+            - name: redis-data
+              mountPath: /data
+  volumeClaimTemplates:
+    - metadata:
+        name: redis-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 10Gi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-service
+  namespace: optimai-bre
+spec:
+  clusterIP: None
+  selector:
+    app: redis
+  ports:
+    - port: 6379

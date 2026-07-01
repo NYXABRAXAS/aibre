@@ -1,0 +1,61 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>OptimAI.BRE.Gateway</RootNamespace>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Core ASP.NET & EF -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.2" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.2">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.2" />
+    <PackageReference Include="EFCore.NamingConventions" Version="8.0.3" />
+
+    <!-- Authentication -->
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.1" />
+    <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="7.3.1" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="7.3.1" />
+    <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
+
+    <!-- Redis -->
+    <PackageReference Include="StackExchange.Redis" Version="2.7.17" />
+    <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="8.0.1" />
+
+    <!-- Azure OpenAI -->
+    <PackageReference Include="Azure.AI.OpenAI" Version="1.0.0-beta.17" />
+
+    <!-- Logging -->
+    <PackageReference Include="Serilog.AspNetCore" Version="8.0.1" />
+    <PackageReference Include="Serilog.Sinks.Console" Version="5.0.1" />
+    <PackageReference Include="Serilog.Sinks.File" Version="5.0.0" />
+    <PackageReference Include="Serilog.Enrichers.Environment" Version="2.3.0" />
+
+    <!-- Swagger -->
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
+
+    <!-- Health Checks -->
+    <PackageReference Include="AspNetCore.HealthChecks.NpgSql" Version="8.0.1" />
+    <PackageReference Include="AspNetCore.HealthChecks.Redis" Version="8.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\OptimAI.BRE.Shared\OptimAI.BRE.Shared.csproj" />
+    <ProjectReference Include="..\OptimAI.BRE.RuleEngine\OptimAI.BRE.RuleEngine.csproj" />
+    <ProjectReference Include="..\OptimAI.BRE.RuleDesigner\OptimAI.BRE.RuleDesigner.csproj" />
+    <ProjectReference Include="..\OptimAI.BRE.AIEngine\OptimAI.BRE.AIEngine.csproj" />
+    <ProjectReference Include="..\OptimAI.BRE.IdentityService\OptimAI.BRE.IdentityService.csproj" />
+    <ProjectReference Include="..\OptimAI.BRE.ClientMgmt\OptimAI.BRE.ClientMgmt.csproj" />
+    <ProjectReference Include="..\OptimAI.BRE.AuditService\OptimAI.BRE.AuditService.csproj" />
+    <ProjectReference Include="..\OptimAI.BRE.ReportService\OptimAI.BRE.ReportService.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="..\OptimAI.BRE.RuleEngine\Infrastructure\RepositoryStubs.cs" Link="Infrastructure\RepositoryStubs.cs" />
+  </ItemGroup>
+</Project>
