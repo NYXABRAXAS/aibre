@@ -4,6 +4,28 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api-client'
 import { RuleBuilder } from '@/components/rule-builder/RuleBuilder'
+import type { FieldCatalogEntry, RuleDefinition } from '@/types'
+
+const DEFAULT_FIELD_CATALOG: FieldCatalogEntry[] = [
+  { fieldPath: 'bureau.cibil_score', displayName: 'CIBIL Score', dataType: 'NUMBER', category: 'Credit Bureau' },
+  { fieldPath: 'bureau.experian_score', displayName: 'Experian Score', dataType: 'NUMBER', category: 'Credit Bureau' },
+  { fieldPath: 'bureau.max_dpd_24m', displayName: 'Max DPD 24M', dataType: 'NUMBER', category: 'Credit Bureau' },
+  { fieldPath: 'bureau.max_dpd_12m', displayName: 'Max DPD 12M', dataType: 'NUMBER', category: 'Credit Bureau' },
+  { fieldPath: 'bureau.total_active_loans', displayName: 'Active Loans', dataType: 'NUMBER', category: 'Credit Bureau' },
+  { fieldPath: 'bureau.written_off_amount', displayName: 'Written Off Amount', dataType: 'NUMBER', category: 'Credit Bureau' },
+  { fieldPath: 'bureau.suit_filed', displayName: 'Suit Filed', dataType: 'BOOLEAN', category: 'Credit Bureau' },
+  { fieldPath: 'bureau.wilful_defaulter', displayName: 'Wilful Defaulter', dataType: 'BOOLEAN', category: 'Credit Bureau' },
+  { fieldPath: 'applicant.age', displayName: 'Age', dataType: 'NUMBER', category: 'KYC' },
+  { fieldPath: 'applicant.gender', displayName: 'Gender', dataType: 'STRING', category: 'KYC' },
+  { fieldPath: 'employment.type', displayName: 'Employment Type', dataType: 'STRING', category: 'Employment' },
+  { fieldPath: 'employment.monthly_income', displayName: 'Monthly Income', dataType: 'NUMBER', category: 'Employment' },
+  { fieldPath: 'employment.vintage_months', displayName: 'Employer Vintage (months)', dataType: 'NUMBER', category: 'Employment' },
+  { fieldPath: 'loan.amount', displayName: 'Loan Amount', dataType: 'NUMBER', category: 'Loan' },
+  { fieldPath: 'loan.tenure_months', displayName: 'Tenure (months)', dataType: 'NUMBER', category: 'Loan' },
+  { fieldPath: 'loan.purpose', displayName: 'Loan Purpose', dataType: 'STRING', category: 'Loan' },
+  { fieldPath: 'vehicle.type', displayName: 'Vehicle Type', dataType: 'STRING', category: 'Vehicle' },
+  { fieldPath: 'vehicle.age_months', displayName: 'Vehicle Age (months)', dataType: 'NUMBER', category: 'Vehicle' },
+]
 
 interface Rule {
   id: string
@@ -38,6 +60,7 @@ const STATUS_BADGE: Record<Rule['status'], string> = {
 export function RulesPage() {
   const [view, setView] = useState<'list' | 'builder'>('list')
   const [editingRule, setEditingRule] = useState<Rule | null>(null)
+  const [ruleDefinition, setRuleDefinition] = useState<RuleDefinition | undefined>(undefined)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('ALL')
   const qc = useQueryClient()
@@ -79,7 +102,11 @@ export function RulesPage() {
             {editingRule ? `Edit: ${editingRule.name}` : 'New Rule'}
           </h1>
         </div>
-        <RuleBuilder />
+        <RuleBuilder
+          fieldCatalog={DEFAULT_FIELD_CATALOG}
+          initialDefinition={ruleDefinition}
+          onChange={setRuleDefinition}
+        />
       </div>
     )
   }
