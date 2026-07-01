@@ -41,8 +41,7 @@ export function MarketplacePage() {
     queryKey: ['marketplace'],
     queryFn: async () => {
       try {
-        const res = await apiClient.get<MarketplaceTemplate[]>('/marketplace/templates')
-        return res.data
+        return await apiClient.get<MarketplaceTemplate[]>('/marketplace/templates')
       } catch {
         return MOCK_TEMPLATES
       }

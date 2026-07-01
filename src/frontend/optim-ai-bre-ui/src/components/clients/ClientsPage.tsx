@@ -46,8 +46,7 @@ export function ClientsPage() {
     queryKey: ['clients'],
     queryFn: async () => {
       try {
-        const res = await apiClient.get<Client[]>('/clients')
-        return res.data
+        return await apiClient.get<Client[]>('/clients')
       } catch {
         return MOCK_CLIENTS
       }

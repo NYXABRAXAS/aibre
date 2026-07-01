@@ -48,7 +48,7 @@ export function AiRulesPage() {
     mutationFn: async (text: string) => {
       try {
         const res = await apiClient.post<{ rules: GeneratedRule[] }>('/ai/generate-rules', { prompt: text })
-        return (res as any).rules?.[0] ?? (res as any).data?.rules?.[0]
+        return res.rules[0]
       } catch {
         await new Promise(r => setTimeout(r, 1800))
         return MOCK_GENERATED

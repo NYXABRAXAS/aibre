@@ -46,8 +46,7 @@ export function RulesPage() {
     queryKey: ['rules'],
     queryFn: async () => {
       try {
-        const res = await apiClient.get<Rule[]>('/rules')
-        return res.data
+        return await apiClient.get<Rule[]>('/rules')
       } catch {
         return MOCK_RULES
       }

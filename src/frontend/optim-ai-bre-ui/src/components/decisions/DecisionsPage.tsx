@@ -49,8 +49,7 @@ export function DecisionsPage() {
     queryKey: ['decisions'],
     queryFn: async () => {
       try {
-        const res = await apiClient.get<Decision[]>('/decisions')
-        return res.data
+        return await apiClient.get<Decision[]>('/decisions')
       } catch {
         return MOCK_DECISIONS
       }

@@ -59,8 +59,7 @@ export function AuditPage() {
     queryKey: ['audit-logs'],
     queryFn: async () => {
       try {
-        const res = await apiClient.get<AuditLog[]>('/audit')
-        return res.data
+        return await apiClient.get<AuditLog[]>('/audit')
       } catch {
         return MOCK_LOGS
       }
